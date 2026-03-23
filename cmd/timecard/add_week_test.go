@@ -128,9 +128,9 @@ func TestDetermineWeekforTimeSheet_Integration(t *testing.T) {
 		t.Errorf("determineWeekforTimeSheet() should not return a date in the future")
 	}
 
-	// Verify the result is within the current week (within 6 days ago)
+	// Verify the result is within the current week (Monday is at most 6 days before Sunday)
 	daysDiff := now.Sub(result).Hours() / 24
-	if daysDiff < 0 || daysDiff > 6 {
+	if daysDiff < 0 || daysDiff >= 7 {
 		t.Errorf("determineWeekforTimeSheet() should return a date within the current week, but it's %.1f days ago", daysDiff)
 	}
 }

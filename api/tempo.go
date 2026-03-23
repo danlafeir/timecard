@@ -91,7 +91,7 @@ func calculateHoursPerDay(totalHours, dayNumber int) int {
 func createWorklogRequest(workType WorkType, hours int, date time.Time, accountID, issueID string) *WorklogRequest {
 	return &WorklogRequest{
 		AuthorAccountID:  accountID,
-		Description:      "devctl tempo",
+		Description:      "timecard",
 		IssueID:          issueID,
 		StartDate:        date.Format(time.DateOnly),
 		StartTime:        defaultStartTime,
@@ -256,7 +256,7 @@ func GetRecentIssueId(accountID, bearerToken string) (int, error) {
 			log.Printf("💡 Please configure a new Tempo API token by running:\n")
 			log.Printf("   tempo configure --token <YOUR_NEW_TOKEN>\n")
 			log.Printf("   or\n")
-			log.Printf("   devctl tempo configure --token <YOUR_NEW_TOKEN>\n")
+			log.Printf("   timecard configure --token <YOUR_NEW_TOKEN>\n")
 			return 0, fmt.Errorf("authentication failed: please configure a new Tempo API token")
 		}
 

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/danlafeir/devctl-timecard/api"
+	"github.com/danlafeir/timecard/api"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )

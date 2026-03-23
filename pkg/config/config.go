@@ -19,23 +19,7 @@ func getConfigPath() string {
 		panic("Could not determine home directory: " + err.Error())
 	}
 
-	// Detect binary name to determine config location
-	// If running as "timecard", use .timecard/config.yaml
-	// Otherwise (devctl-timecard), use .devctl/config.yaml
-	var execName string
-	if len(os.Args) > 0 {
-		execPath := os.Args[0]
-		execName = filepath.Base(execPath)
-		// Remove any extensions and check if it's the timecard binary
-		execName = strings.TrimSuffix(execName, filepath.Ext(execName))
-	}
-
-	if execName == "timecard" {
-		return filepath.Join(homeDir, ".timecard", "config.yaml")
-	}
-
-	// Default to devctl config location
-	return filepath.Join(homeDir, ".devctl", "config.yaml")
+	return filepath.Join(homeDir, ".timecard", "config.yaml")
 }
 
 func InitConfig() error {

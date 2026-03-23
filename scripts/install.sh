@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-REPO=danlafeir/devctl-timecard
+REPO=danlafeir/timecard
 BINARY=timecard
 INSTALL_DIR=~/.local/bin
 

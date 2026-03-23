@@ -3,7 +3,8 @@ package cmd
 import (
 	"os"
 
-	"github.com/danlafeir/devctl-timecard/cmd/timecard"
+	"github.com/danlafeir/cli-go/pkg/secrets"
+	"github.com/danlafeir/timecard/cmd/timecard"
 	"github.com/spf13/cobra"
 )
 
@@ -47,6 +48,8 @@ var completionCmd = &cobra.Command{
 }
 
 func init() {
+	secrets.SetDefaultProvider("timecard")
+
 	// Hide the help command
 	rootCmd.SetHelpCommand(&cobra.Command{
 		Hidden: true,

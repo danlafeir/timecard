@@ -1,6 +1,6 @@
 package main
 
-import "github.com/danlafeir/devctl-timecard/cmd"
+import "github.com/danlafeir/timecard/cmd"
 
 // BuildGitHash is set at build time via -ldflags
 var BuildGitHash = "dev"
