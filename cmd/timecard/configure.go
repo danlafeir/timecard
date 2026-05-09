@@ -14,11 +14,10 @@ import (
 	"github.com/spf13/viper"
 )
 
-const TOP_LEVEL_CONFIG = "timecard"
 const SECRETS_NAMESPACE = "timecard"
 const API_TOKEN_NAME = "jira-api-token"
-const ACCOUNT_ID_CONFIG = TOP_LEVEL_CONFIG + ".tempo.accountId"
-const ISSUE_ID_CONFIG = TOP_LEVEL_CONFIG + ".tempo.issueId"
+const ACCOUNT_ID_CONFIG = "tempo.accountId"
+const ISSUE_ID_CONFIG = "tempo.issueId"
 
 var configPath string
 
@@ -113,10 +112,9 @@ func initConfig() {
 		log.Fatal("Failed to create config directory:", err)
 	}
 
-	// Create config file if it doesn't exist (with empty timecard structure)
+	// Create config file if it doesn't exist
 	if _, err := os.Stat(configFilePath); os.IsNotExist(err) {
-		// Create empty config file with timecard.tempo key structure
-		emptyConfig := []byte("timecard:\n  tempo:\n")
+		emptyConfig := []byte("tempo:\n")
 		if err := os.WriteFile(configFilePath, emptyConfig, 0644); err != nil {
 			log.Fatal("Failed to create config file:", err)
 		}

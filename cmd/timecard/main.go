@@ -22,11 +22,7 @@ func ConfigureCmd() *cobra.Command {
 
 			configureApiToken(apiToken)
 			configureAccountId(accountId)
-			// Get accountId from viper after it's been set
-			configuredAccountId := viper.GetString("tempo." + ACCOUNT_ID_CONFIG)
-			if configuredAccountId == "" {
-				configuredAccountId = accountId
-			}
+			configuredAccountId := viper.GetString(ACCOUNT_ID_CONFIG)
 			configureIssueId(configuredAccountId)
 
 			if err := viper.WriteConfig(); err != nil {
