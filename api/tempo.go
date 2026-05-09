@@ -204,23 +204,27 @@ func SendWorklog(workType WorkType, hours int, startDay time.Time, bearerToken, 
 	return nil
 }
 
-// SendPtoWorklog logs PTO as exactly 8 hours per consecutive weekday starting
-// from startDay. Unlike SendWorklog, hours are not spread fractionally — each
-// day gets a full 8-hour block. days is capped at maxDaysPerWeek.
-func SendPtoWorklog(days int, startDay time.Time, bearerToken, accountID, issueID string) error {
-	if days <= 0 {
+// SendPtoWorklog allocates PTO hours serially across consecutive weekdays
+// starting from startDay, filling up to hoursPerPtoDay (8) hours per day.
+// Unlike SendWorklog, hours are not spread fractionally — each day is filled
+// to 8h before moving to the next.
+func SendPtoWorklog(hours int, startDay time.Time, bearerToken, accountID, issueID string) error {
+	if hours <= 0 {
 		return nil
 	}
-	if days > maxDaysPerWeek {
-		days = maxDaysPerWeek
-	}
-	for day := 0; day < days; day++ {
+	remaining := hours
+	for day := 0; remaining > 0 && day < maxDaysPerWeek; day++ {
+		hoursThisDay := remaining
+		if hoursThisDay > hoursPerPtoDay {
+			hoursThisDay = hoursPerPtoDay
+		}
 		logDate := startDay.AddDate(0, 0, day)
-		fmt.Printf("Logging %d hours PTO for %s\n", hoursPerPtoDay, logDate.Format(time.DateOnly))
-		reqBody := createWorklogRequest(PtoWorkType, hoursPerPtoDay, logDate, accountID, issueID)
+		fmt.Printf("Logging %d hours PTO for %s\n", hoursThisDay, logDate.Format(time.DateOnly))
+		reqBody := createWorklogRequest(PtoWorkType, hoursThisDay, logDate, accountID, issueID)
 		if err := sendWorklogEntry(reqBody, bearerToken); err != nil {
 			return fmt.Errorf("failed to send PTO for %s: %w", logDate.Format(time.DateOnly), err)
 		}
+		remaining -= hoursThisDay
 	}
 	return nil
 }

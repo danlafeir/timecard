@@ -18,9 +18,9 @@ func TestConstants(t *testing.T) {
 			expected: "How much time did you spend developing, designing or testing software? This is considered capitalizable time (in hours): ",
 		},
 		{
-			name:     "PtoDays constant",
-			constant: PtoDays,
-			expected: "How many days of PTO (vacation or sick) did you take this week? (0-5 whole days, each = 8 hours): ",
+			name:     "PtoTime constant",
+			constant: PtoTime,
+			expected: "How much time did you spend with PTO (vacation or sick) (in hours): ",
 		},
 		{
 			name:     "OtherTime constant",
@@ -182,13 +182,10 @@ func TestStringToInt(t *testing.T) {
 // I/O operations from business logic for better testability.
 
 func TestRequestTimeInput_Logic(t *testing.T) {
-	// Tests the total-hours calculation used in requestTimeInput.
-	// PTO is now entered as whole days; each day contributes hoursPerPtoDay (8) hours.
-
 	tests := []struct {
 		name              string
 		capitalizableTime int
-		ptoDays           int
+		ptoTime           int
 		otherTime         int
 		expectedTotal     int
 		meetsMinimum      bool
@@ -196,7 +193,7 @@ func TestRequestTimeInput_Logic(t *testing.T) {
 		{
 			name:              "All zeros",
 			capitalizableTime: 0,
-			ptoDays:           0,
+			ptoTime:           0,
 			otherTime:         0,
 			expectedTotal:     0,
 			meetsMinimum:      false,
@@ -204,7 +201,7 @@ func TestRequestTimeInput_Logic(t *testing.T) {
 		{
 			name:              "Standard work week",
 			capitalizableTime: 36,
-			ptoDays:           0,
+			ptoTime:           0,
 			otherTime:         4,
 			expectedTotal:     40,
 			meetsMinimum:      true,
@@ -212,15 +209,15 @@ func TestRequestTimeInput_Logic(t *testing.T) {
 		{
 			name:              "Full vacation week",
 			capitalizableTime: 0,
-			ptoDays:           5,
+			ptoTime:           40,
 			otherTime:         0,
 			expectedTotal:     40,
 			meetsMinimum:      true,
 		},
 		{
-			name:              "Mixed week — 1 PTO day",
+			name:              "Mixed week",
 			capitalizableTime: 26,
-			ptoDays:           1,
+			ptoTime:           8,
 			otherTime:         6,
 			expectedTotal:     40,
 			meetsMinimum:      true,
@@ -228,7 +225,7 @@ func TestRequestTimeInput_Logic(t *testing.T) {
 		{
 			name:              "Below minimum — triggers re-prompt",
 			capitalizableTime: 10,
-			ptoDays:           0,
+			ptoTime:           0,
 			otherTime:         5,
 			expectedTotal:     15,
 			meetsMinimum:      false,
@@ -237,8 +234,7 @@ func TestRequestTimeInput_Logic(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ptoHours := tt.ptoDays * hoursPerPtoDay
-			total := tt.capitalizableTime + ptoHours + tt.otherTime
+			total := tt.capitalizableTime + tt.ptoTime + tt.otherTime
 
 			if total != tt.expectedTotal {
 				t.Errorf("total = %d, want %d", total, tt.expectedTotal)

@@ -9,27 +9,23 @@ import (
 
 const (
 	CapitalizableTime = "How much time did you spend developing, designing or testing software? This is considered capitalizable time (in hours): "
-	PtoDays           = "How many days of PTO (vacation or sick) did you take this week? (0-5 whole days, each = 8 hours): "
+	PtoTime           = "How much time did you spend with PTO (vacation or sick) (in hours): "
 	OtherTime         = "How much time did you spend on other activities i.e. meetings, etc. (in hours): "
 
 	minWeeklyHours = 40
-	maxPtoDays     = 5
-	hoursPerPtoDay = 8
 )
 
-func requestTimeInput() (capitalizableTime, ptoDays, otherTime int) {
-	fmt.Printf("Answer the following questions to estimate how you spent your time this week.\n")
-	fmt.Printf("PTO is entered as whole days (0-%d); all other time is in hours.\n\n", maxPtoDays)
+func requestTimeInput() (capitalizableTime, ptoTime, otherTime int) {
+	fmt.Printf("Answer the following questions to estimate how you spent your time this week.\n\n")
 
 	for {
 		capitalizableTime = getTime(CapitalizableTime)
-		ptoDays = getPtoDays()
+		ptoTime = getTime(PtoTime)
 		otherTime = getTime(OtherTime)
 
-		ptoHours := ptoDays * hoursPerPtoDay
-		total := capitalizableTime + ptoHours + otherTime
-		fmt.Printf("Total hours this week: %d (capitalizable: %d, PTO: %d day(s) / %d hours, other: %d)\n",
-			total, capitalizableTime, ptoDays, ptoHours, otherTime)
+		total := capitalizableTime + ptoTime + otherTime
+		fmt.Printf("Total hours this week: %d (capitalizable: %d, PTO: %d, other: %d)\n",
+			total, capitalizableTime, ptoTime, otherTime)
 
 		if total >= minWeeklyHours {
 			break
@@ -47,21 +43,6 @@ func getTime(printString string) int {
 		log.Fatal(err)
 	}
 	return stringToInt(timeInput)
-}
-
-func getPtoDays() int {
-	for {
-		fmt.Print(PtoDays)
-		var input string
-		if _, err := fmt.Scan(&input); err != nil {
-			log.Fatal(err)
-		}
-		days := stringToInt(input)
-		if days >= 0 && days <= maxPtoDays {
-			return days
-		}
-		fmt.Printf("PTO days must be between 0 and %d. Please re-enter.\n", maxPtoDays)
-	}
 }
 
 func stringToInt(input string) int {
