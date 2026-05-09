@@ -14,12 +14,18 @@ import (
 )
 
 const (
+	defaultStartTime = "09:00:00"
+	secondsPerHour   = 3600
+	maxDaysPerWeek   = 5
+	daysInWeek       = 7
+	hoursPerPtoDay   = 8
+)
+
+// tempoAPIBaseURL and tempoAPIUserBaseURL are vars so tests can override them
+// with an httptest.Server URL.
+var (
 	tempoAPIBaseURL     = "https://api.tempo.io/4/worklogs"
 	tempoAPIUserBaseURL = "https://api.tempo.io/4/worklogs/user"
-	defaultStartTime    = "09:00:00"
-	secondsPerHour      = 3600
-	maxDaysPerWeek      = 5
-	daysInWeek          = 7
 )
 
 type WorkType struct {
@@ -195,6 +201,27 @@ func SendWorklog(workType WorkType, hours int, startDay time.Time, bearerToken, 
 		}
 	}
 
+	return nil
+}
+
+// SendPtoWorklog logs PTO as exactly 8 hours per consecutive weekday starting
+// from startDay. Unlike SendWorklog, hours are not spread fractionally — each
+// day gets a full 8-hour block. days is capped at maxDaysPerWeek.
+func SendPtoWorklog(days int, startDay time.Time, bearerToken, accountID, issueID string) error {
+	if days <= 0 {
+		return nil
+	}
+	if days > maxDaysPerWeek {
+		days = maxDaysPerWeek
+	}
+	for day := 0; day < days; day++ {
+		logDate := startDay.AddDate(0, 0, day)
+		fmt.Printf("Logging %d hours PTO for %s\n", hoursPerPtoDay, logDate.Format(time.DateOnly))
+		reqBody := createWorklogRequest(PtoWorkType, hoursPerPtoDay, logDate, accountID, issueID)
+		if err := sendWorklogEntry(reqBody, bearerToken); err != nil {
+			return fmt.Errorf("failed to send PTO for %s: %w", logDate.Format(time.DateOnly), err)
+		}
+	}
 	return nil
 }
 

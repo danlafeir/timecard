@@ -38,7 +38,7 @@ func ConfigureCmd() *cobra.Command {
 }
 
 func AddEntryCmd() *cobra.Command {
-	var capitalizableTime, ptoTime, otherTime int
+	var capitalizableTime, ptoDays, otherTime int
 
 	cmd := &cobra.Command{
 		Use:     "add-week",
@@ -49,29 +49,33 @@ func AddEntryCmd() *cobra.Command {
 			accountId, issueId := fetchConfig()
 			startOfWeek := requestDayOfWeek()
 
-			// Use CLI flags if provided, otherwise prompt interactively
-			hasAnyFlag := cmd.Flags().Changed("capitalizable-time") || cmd.Flags().Changed("pto-time") || cmd.Flags().Changed("other-time")
+			hasAnyFlag := cmd.Flags().Changed("capitalizable-time") || cmd.Flags().Changed("pto-days") || cmd.Flags().Changed("other-time")
 
 			if !hasAnyFlag {
-				// No flags provided, use interactive prompts for all
-				capitalizableTime, ptoTime, otherTime = requestTimeInput()
+				capitalizableTime, ptoDays, otherTime = requestTimeInput()
 			} else {
-				// Some or all flags provided - use flags for set values, prompt for missing ones
 				if !cmd.Flags().Changed("capitalizable-time") {
 					capitalizableTime = getTime(CapitalizableTime)
 				}
-				if !cmd.Flags().Changed("pto-time") {
-					ptoTime = getTime(PtoTime)
+				if !cmd.Flags().Changed("pto-days") {
+					ptoDays = getPtoDays()
 				}
 				if !cmd.Flags().Changed("other-time") {
 					otherTime = getTime(OtherTime)
 				}
 			}
 
+			ptoHours := ptoDays * hoursPerPtoDay
+			total := capitalizableTime + ptoHours + otherTime
+			if total < minWeeklyHours {
+				return fmt.Errorf("total hours (%d) must be at least %d (capitalizable: %d, PTO: %d day(s) / %d hours, other: %d)",
+					total, minWeeklyHours, capitalizableTime, ptoDays, ptoHours, otherTime)
+			}
+
 			if err := api.SendWorklog(api.CapitalizableWorkType, capitalizableTime, startOfWeek, bearerToken, accountId, issueId); err != nil {
 				return err
 			}
-			if err := api.SendWorklog(api.PtoWorkType, ptoTime, startOfWeek, bearerToken, accountId, issueId); err != nil {
+			if err := api.SendPtoWorklog(ptoDays, startOfWeek, bearerToken, accountId, issueId); err != nil {
 				return err
 			}
 			if err := api.SendWorklog(api.OtherWorkType, otherTime, startOfWeek, bearerToken, accountId, issueId); err != nil {
@@ -84,7 +88,7 @@ func AddEntryCmd() *cobra.Command {
 	}
 
 	cmd.Flags().IntVarP(&capitalizableTime, "capitalizable-time", "c", 0, "Capitalizable time in hours")
-	cmd.Flags().IntVarP(&ptoTime, "pto-time", "p", 0, "PTO time in hours")
+	cmd.Flags().IntVarP(&ptoDays, "pto-days", "p", 0, "PTO days (0-5; each day = 8 hours)")
 	cmd.Flags().IntVarP(&otherTime, "other-time", "m", 0, "Other time in hours")
 
 	return cmd

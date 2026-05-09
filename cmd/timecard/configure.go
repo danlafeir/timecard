@@ -22,6 +22,17 @@ const ISSUE_ID_CONFIG = "tempo.issueId"
 var configPath string
 
 func configureApiToken(apiToken string) string {
+	existing, _ := secrets.Read(SECRETS_NAMESPACE, API_TOKEN_NAME)
+	if existing != "" && apiToken == "" {
+		fmt.Print("A Tempo API token is already configured. Replace it? (y/N): ")
+		scanner := bufio.NewScanner(os.Stdin)
+		scanner.Scan()
+		if answer := strings.TrimSpace(scanner.Text()); answer != "y" && answer != "Y" {
+			fmt.Println("Keeping existing token.")
+			return existing
+		}
+	}
+
 	token := strings.TrimSpace(apiToken)
 	if token == "" {
 		fmt.Print("Enter your Tempo API token: ")
@@ -44,6 +55,17 @@ func configureApiToken(apiToken string) string {
 }
 
 func configureAccountId(accountId string) {
+	existing := viper.GetString(ACCOUNT_ID_CONFIG)
+	if existing != "" && accountId == "" {
+		fmt.Printf("Account ID is already configured (%s). Replace it? (y/N): ", existing)
+		scanner := bufio.NewScanner(os.Stdin)
+		scanner.Scan()
+		if answer := strings.TrimSpace(scanner.Text()); answer != "y" && answer != "Y" {
+			fmt.Println("Keeping existing account ID.")
+			return
+		}
+	}
+
 	if accountId == "" {
 		fmt.Print("Add Tempo Account Id here: ")
 		scanner := bufio.NewScanner(os.Stdin)

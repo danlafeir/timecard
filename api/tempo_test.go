@@ -237,6 +237,128 @@ func TestHandleAPIError(t *testing.T) {
 	}
 }
 
+func TestSendPtoWorklog(t *testing.T) {
+	monday := time.Date(2024, 1, 8, 0, 0, 0, 0, time.UTC) // a known Monday
+
+	t.Run("zero days makes no requests", func(t *testing.T) {
+		calls := 0
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			calls++
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer server.Close()
+
+		orig := tempoAPIBaseURL
+		tempoAPIBaseURL = server.URL
+		defer func() { tempoAPIBaseURL = orig }()
+
+		err := SendPtoWorklog(0, monday, "token", "acct", "ISSUE-1")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if calls != 0 {
+			t.Errorf("expected 0 HTTP calls, got %d", calls)
+		}
+	})
+
+	t.Run("three days sends three consecutive-day requests", func(t *testing.T) {
+		var receivedDates []string
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			var req WorklogRequest
+			body, _ := io.ReadAll(r.Body)
+			json.Unmarshal(body, &req)
+			receivedDates = append(receivedDates, req.StartDate)
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer server.Close()
+
+		orig := tempoAPIBaseURL
+		tempoAPIBaseURL = server.URL
+		defer func() { tempoAPIBaseURL = orig }()
+
+		err := SendPtoWorklog(3, monday, "token", "acct", "ISSUE-1")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(receivedDates) != 3 {
+			t.Fatalf("expected 3 requests, got %d", len(receivedDates))
+		}
+		want := []string{"2024-01-08", "2024-01-09", "2024-01-10"}
+		for i, d := range want {
+			if receivedDates[i] != d {
+				t.Errorf("request %d: StartDate = %q, want %q", i, receivedDates[i], d)
+			}
+		}
+	})
+
+	t.Run("five days each carries 8-hour blocks", func(t *testing.T) {
+		var seconds []int
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			var req WorklogRequest
+			body, _ := io.ReadAll(r.Body)
+			json.Unmarshal(body, &req)
+			seconds = append(seconds, req.TimeSpentSeconds)
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer server.Close()
+
+		orig := tempoAPIBaseURL
+		tempoAPIBaseURL = server.URL
+		defer func() { tempoAPIBaseURL = orig }()
+
+		err := SendPtoWorklog(5, monday, "token", "acct", "ISSUE-1")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(seconds) != 5 {
+			t.Fatalf("expected 5 requests, got %d", len(seconds))
+		}
+		for i, s := range seconds {
+			if s != hoursPerPtoDay*secondsPerHour {
+				t.Errorf("request %d: TimeSpentSeconds = %d, want %d", i, s, hoursPerPtoDay*secondsPerHour)
+			}
+		}
+	})
+
+	t.Run("server error propagates", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(`{"error":"bad"}`))
+		}))
+		defer server.Close()
+
+		orig := tempoAPIBaseURL
+		tempoAPIBaseURL = server.URL
+		defer func() { tempoAPIBaseURL = orig }()
+
+		err := SendPtoWorklog(1, monday, "token", "acct", "ISSUE-1")
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+	})
+
+	t.Run("days capped at maxDaysPerWeek", func(t *testing.T) {
+		calls := 0
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			calls++
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer server.Close()
+
+		orig := tempoAPIBaseURL
+		tempoAPIBaseURL = server.URL
+		defer func() { tempoAPIBaseURL = orig }()
+
+		err := SendPtoWorklog(10, monday, "token", "acct", "ISSUE-1")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if calls != maxDaysPerWeek {
+			t.Errorf("expected %d requests (cap), got %d", maxDaysPerWeek, calls)
+		}
+	})
+}
+
 func TestSendWorklogEntry(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Verify headers

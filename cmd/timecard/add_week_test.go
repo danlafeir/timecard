@@ -18,9 +18,9 @@ func TestConstants(t *testing.T) {
 			expected: "How much time did you spend developing, designing or testing software? This is considered capitalizable time (in hours): ",
 		},
 		{
-			name:     "PtoTime constant",
-			constant: PtoTime,
-			expected: "How much time did you spend with PTO (vacation or sick) (in hours): ",
+			name:     "PtoDays constant",
+			constant: PtoDays,
+			expected: "How many days of PTO (vacation or sick) did you take this week? (0-5 whole days, each = 8 hours): ",
 		},
 		{
 			name:     "OtherTime constant",
@@ -182,51 +182,69 @@ func TestStringToInt(t *testing.T) {
 // I/O operations from business logic for better testability.
 
 func TestRequestTimeInput_Logic(t *testing.T) {
-	// Test the calculation logic used in requestTimeInput
-	// This tests the core logic without I/O dependencies
-	
+	// Tests the total-hours calculation used in requestTimeInput.
+	// PTO is now entered as whole days; each day contributes hoursPerPtoDay (8) hours.
+
 	tests := []struct {
-		name          string
-		capitalizableTime, ptoTime, otherTime int
-		expectedTotal int
+		name              string
+		capitalizableTime int
+		ptoDays           int
+		otherTime         int
+		expectedTotal     int
+		meetsMinimum      bool
 	}{
 		{
 			name:              "All zeros",
 			capitalizableTime: 0,
-			ptoTime:           0,
+			ptoDays:           0,
 			otherTime:         0,
 			expectedTotal:     0,
+			meetsMinimum:      false,
 		},
 		{
 			name:              "Standard work week",
 			capitalizableTime: 36,
-			ptoTime:           0,
+			ptoDays:           0,
 			otherTime:         4,
 			expectedTotal:     40,
+			meetsMinimum:      true,
 		},
 		{
-			name:              "Vacation week",
+			name:              "Full vacation week",
 			capitalizableTime: 0,
-			ptoTime:           40,
+			ptoDays:           5,
 			otherTime:         0,
 			expectedTotal:     40,
+			meetsMinimum:      true,
 		},
 		{
-			name:              "Mixed week",
+			name:              "Mixed week — 1 PTO day",
 			capitalizableTime: 26,
-			ptoTime:           8,
+			ptoDays:           1,
 			otherTime:         6,
 			expectedTotal:     40,
+			meetsMinimum:      true,
+		},
+		{
+			name:              "Below minimum — triggers re-prompt",
+			capitalizableTime: 10,
+			ptoDays:           0,
+			otherTime:         5,
+			expectedTotal:     15,
+			meetsMinimum:      false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Test the calculation logic from requestTimeInput
-			totalHoursThisWeek := tt.otherTime + tt.ptoTime + tt.capitalizableTime
-			
-			if totalHoursThisWeek != tt.expectedTotal {
-				t.Errorf("Total hours calculation: got %d, expected %d", totalHoursThisWeek, tt.expectedTotal)
+			ptoHours := tt.ptoDays * hoursPerPtoDay
+			total := tt.capitalizableTime + ptoHours + tt.otherTime
+
+			if total != tt.expectedTotal {
+				t.Errorf("total = %d, want %d", total, tt.expectedTotal)
+			}
+			if (total >= minWeeklyHours) != tt.meetsMinimum {
+				t.Errorf("meetsMinimum = %v, want %v (total=%d, min=%d)", total >= minWeeklyHours, tt.meetsMinimum, total, minWeeklyHours)
 			}
 		})
 	}

@@ -9,22 +9,34 @@ import (
 
 const (
 	CapitalizableTime = "How much time did you spend developing, designing or testing software? This is considered capitalizable time (in hours): "
-	PtoTime           = "How much time did you spend with PTO (vacation or sick) (in hours): "
+	PtoDays           = "How many days of PTO (vacation or sick) did you take this week? (0-5 whole days, each = 8 hours): "
 	OtherTime         = "How much time did you spend on other activities i.e. meetings, etc. (in hours): "
+
+	minWeeklyHours = 40
+	maxPtoDays     = 5
+	hoursPerPtoDay = 8
 )
 
-func requestTimeInput() (capitalizableTime, ptoTime, otherTime int) {
-	fmt.Printf("Answer the following questions to the best of your ability and estimate how you spent your time this week.\n")
-	fmt.Printf("We will ask about 3 things: capitalizable time, PTO, and other activities.\n")
-	fmt.Printf("(For the moment, this cannot exceed a total of 40 hours)\n\n")
+func requestTimeInput() (capitalizableTime, ptoDays, otherTime int) {
+	fmt.Printf("Answer the following questions to estimate how you spent your time this week.\n")
+	fmt.Printf("PTO is entered as whole days (0-%d); all other time is in hours.\n\n", maxPtoDays)
 
-	capitalizableTime = getTime(CapitalizableTime)
-	ptoTime = getTime(PtoTime)
-	otherTime = getTime(OtherTime)
+	for {
+		capitalizableTime = getTime(CapitalizableTime)
+		ptoDays = getPtoDays()
+		otherTime = getTime(OtherTime)
 
-	totalHoursThisWeek := otherTime + ptoTime + capitalizableTime
+		ptoHours := ptoDays * hoursPerPtoDay
+		total := capitalizableTime + ptoHours + otherTime
+		fmt.Printf("Total hours this week: %d (capitalizable: %d, PTO: %d day(s) / %d hours, other: %d)\n",
+			total, capitalizableTime, ptoDays, ptoHours, otherTime)
 
-	print(fmt.Sprintf("Total hours this week: %s\n", strconv.Itoa(totalHoursThisWeek)))
+		if total >= minWeeklyHours {
+			break
+		}
+		fmt.Printf("\nTotal is %dh — %dh short of the required %dh. Please re-enter.\n\n",
+			total, minWeeklyHours-total, minWeeklyHours)
+	}
 	return
 }
 
@@ -35,6 +47,21 @@ func getTime(printString string) int {
 		log.Fatal(err)
 	}
 	return stringToInt(timeInput)
+}
+
+func getPtoDays() int {
+	for {
+		fmt.Print(PtoDays)
+		var input string
+		if _, err := fmt.Scan(&input); err != nil {
+			log.Fatal(err)
+		}
+		days := stringToInt(input)
+		if days >= 0 && days <= maxPtoDays {
+			return days
+		}
+		fmt.Printf("PTO days must be between 0 and %d. Please re-enter.\n", maxPtoDays)
+	}
 }
 
 func stringToInt(input string) int {
