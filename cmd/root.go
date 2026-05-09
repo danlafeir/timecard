@@ -1,71 +1,70 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/danlafeir/cli-go/pkg/secrets"
 	"github.com/danlafeir/timecard/cmd/timecard"
+	"github.com/danlafeir/timecard/internal/selfupdate"
 	"github.com/spf13/cobra"
 )
 
+// Build metadata, populated by main.go from -ldflags-injected values.
+var (
+	BuildVersion string
+	BuildGitHash string
+	BuildDate    string
+)
+
 var rootCmd = &cobra.Command{
-	Version:      "1.0",
 	Use:          "timecard",
 	Short:        "commands to manage your timecard",
 	SilenceUsage: true,
 }
 
+// updateCmd downloads and installs the latest GitHub Release of timecard.
+var updateCmd = &cobra.Command{
+	Use:   "update",
+	Short: "Update timecard to the latest version",
+	Run: func(cmd *cobra.Command, args []string) {
+		selfupdate.Run(BuildVersion, cmd)
+	},
+}
+
+// versionCmd prints build metadata.
+var versionCmd = &cobra.Command{
+	Use:   "version",
+	Short: "Print timecard version, commit, and build date",
+	Run: func(cmd *cobra.Command, _ []string) {
+		fmt.Println(versionString())
+	},
+}
+
+func versionString() string {
+	return fmt.Sprintf("timecard %s (commit %s, built %s)", BuildVersion, BuildGitHash, BuildDate)
+}
+
 func Execute() {
+	rootCmd.Version = versionString()
+
 	err := rootCmd.Execute()
 	if err != nil {
 		os.Exit(1)
 	}
 }
 
-var completionCmd = &cobra.Command{
-	Use:    "completion [bash|zsh|fish|powershell]",
-	Short:  "Generate shell completion scripts",
-	Hidden: true,
-	Run: func(cmd *cobra.Command, args []string) {
-		if len(args) < 1 {
-			cmd.Println("Please specify a shell: bash, zsh, fish, or powershell")
-			os.Exit(1)
-		}
-		switch args[0] {
-		case "bash":
-			rootCmd.GenBashCompletion(os.Stdout)
-		case "zsh":
-			rootCmd.GenZshCompletion(os.Stdout)
-		case "fish":
-			rootCmd.GenFishCompletion(os.Stdout, true)
-		case "powershell":
-			rootCmd.GenPowerShellCompletionWithDesc(os.Stdout)
-		default:
-			cmd.Println("Unsupported shell type.")
-			os.Exit(1)
-		}
-	},
-}
-
 func init() {
 	secrets.SetDefaultProvider("timecard")
 
-	// Hide the help command
-	rootCmd.SetHelpCommand(&cobra.Command{
-		Hidden: true,
-	})
-
-	// Disable the completion command
+	rootCmd.SetHelpCommand(&cobra.Command{Hidden: true})
 	rootCmd.CompletionOptions.DisableDefaultCmd = true
 	rootCmd.CompletionOptions.HiddenDefaultCmd = true
+	rootCmd.SetVersionTemplate("{{.Version}}\n")
 
-	// Add commands
 	rootCmd.AddCommand(timecard.AddEntryCmd())
 	rootCmd.AddCommand(timecard.ConfigureCmd())
 	rootCmd.AddCommand(timecard.GetWeekCmd())
-
-	// Hide completion command if it was already registered
-	if compCmd, _, _ := rootCmd.Find([]string{"completion"}); compCmd != nil {
-		compCmd.Hidden = true
-	}
+	rootCmd.AddCommand(updateCmd)
+	rootCmd.AddCommand(versionCmd)
 }
