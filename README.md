@@ -1,8 +1,8 @@
-# devctl-timecard
+# timecard
 
 *I built this because I was frustrated with filling out timecards at work and wanted to make it easier*
 
-This is a CLI for submitting a timecard for the week. It currently supports an integration with the [Tempo API](https://apidocs.tempo.io/). I store secrets in your MacOS keychain and configuration at `$HOME/.timecard/` or `$HOME/.devctl/config` based on the binary. 
+This is a CLI for submitting a timecard for the week. It currently supports an integration with the [Tempo API](https://apidocs.tempo.io/). I store secrets in your MacOS keychain and configuration at `$HOME/.timecard/`.
 
 I am trying to create a constellation of CLI tools that make my life easier. 
 
@@ -11,7 +11,7 @@ I am trying to create a constellation of CLI tools that make my life easier.
 You can install the `timecard` binary with:
 
 ```sh
-curl -sSL https://raw.githubusercontent.com/danlafeir/devctl-timecard/main/scripts/install.sh | sh
+curl -sSL https://raw.githubusercontent.com/danlafeir/timecard/main/scripts/install.sh | sh
 ```
 
 This script will detect your OS and architecture, download the binary (`timecard-<os>-<arch>`) and install it as `timecard` to `~/.local/bin`. Ensure `~/.local/bin` is in your PATH.
@@ -56,9 +56,7 @@ timecard configure --token <YOUR_TOKEN> --account-id <ACCOUNT_ID>
 You can also omit flags to be prompted interactively.
 
 - The API token is stored securely in the device's secure storage.
-- The account ID and default issue ID are stored in the config file under a `tempo` key:
-  - **`timecard` binary**: `$HOME/.timecard/config.yaml`
-  - **devctl plugin (`devctl-timecard`)**: `$HOME/.devctl/config.yaml`
+- The account ID and default issue ID are stored in the config file under a `tempo` key at `$HOME/.timecard/config.yaml`.
 
 The issue ID will be automatically fetched from your most recent Tempo worklog entry (within the past two weeks). Make sure you assigned to the JIRA Project and use a JIRA card that belongs to the appropiate project.
 
@@ -103,13 +101,6 @@ make build
 Build for all supported OS/arch:
 ```sh
 make build-all
-```
-
-Build a binaries as a [devctl](https://github.com/danlafeir/devctl) plugin
-```sh
-make build-devctl
-# or
-make build-all-devctl
 ```
 
 ### Running Locally

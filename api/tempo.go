@@ -254,8 +254,6 @@ func GetRecentIssueId(accountID, bearerToken string) (int, error) {
 			log.Printf("❌ Authentication Failed (HTTP 401)\n")
 			log.Printf("🔑 Your Tempo API token appears to be invalid or expired.\n")
 			log.Printf("💡 Please configure a new Tempo API token by running:\n")
-			log.Printf("   tempo configure --token <YOUR_NEW_TOKEN>\n")
-			log.Printf("   or\n")
 			log.Printf("   timecard configure --token <YOUR_NEW_TOKEN>\n")
 			return 0, fmt.Errorf("authentication failed: please configure a new Tempo API token")
 		}
