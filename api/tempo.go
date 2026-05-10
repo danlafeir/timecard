@@ -16,9 +16,9 @@ import (
 const (
 	defaultStartTime = "09:00:00"
 	secondsPerHour   = 3600
-	maxDaysPerWeek   = 5
+	MaxDaysPerWeek   = 5 // work days in a week
+	HoursPerDay      = 8 // standard hours in a workday
 	daysInWeek       = 7
-	hoursPerPtoDay   = 8
 )
 
 // tempoAPIBaseURL and tempoAPIUserBaseURL are vars so tests can override them
@@ -83,13 +83,13 @@ var (
 // For hours >= 5, it distributes hours across 5 days using the original formula:
 // hours/5 + (hours%5 + 5 - dayNumber)/5
 func calculateHoursPerDay(totalHours, dayNumber int) int {
-	if totalHours < maxDaysPerWeek {
+	if totalHours < MaxDaysPerWeek {
 		return 1
 	}
-	baseHours := totalHours / maxDaysPerWeek
-	remainder := int(math.Mod(float64(totalHours), float64(maxDaysPerWeek)))
+	baseHours := totalHours / MaxDaysPerWeek
+	remainder := int(math.Mod(float64(totalHours), float64(MaxDaysPerWeek)))
 	// Distribute remainder hours across days, with earlier days getting more
-	bonusHours := (remainder + maxDaysPerWeek - dayNumber) / maxDaysPerWeek
+	bonusHours := (remainder + MaxDaysPerWeek - dayNumber) / MaxDaysPerWeek
 	return baseHours + bonusHours
 }
 
@@ -185,8 +185,8 @@ func SendWorklog(workType WorkType, hours int, startDay time.Time, bearerToken, 
 	}
 
 	daysToLog := hours
-	if daysToLog > maxDaysPerWeek {
-		daysToLog = maxDaysPerWeek
+	if daysToLog > MaxDaysPerWeek {
+		daysToLog = MaxDaysPerWeek
 	}
 
 	for day := 1; day <= daysToLog; day++ {
@@ -205,7 +205,7 @@ func SendWorklog(workType WorkType, hours int, startDay time.Time, bearerToken, 
 }
 
 // SendPtoWorklog allocates PTO hours serially across consecutive weekdays
-// starting from startDay, filling up to hoursPerPtoDay (8) hours per day.
+// starting from startDay, filling up to HoursPerDay (8) hours per day.
 // Unlike SendWorklog, hours are not spread fractionally — each day is filled
 // to 8h before moving to the next.
 func SendPtoWorklog(hours int, startDay time.Time, bearerToken, accountID, issueID string) error {
@@ -213,10 +213,10 @@ func SendPtoWorklog(hours int, startDay time.Time, bearerToken, accountID, issue
 		return nil
 	}
 	remaining := hours
-	for day := 0; remaining > 0 && day < maxDaysPerWeek; day++ {
+	for day := 0; remaining > 0 && day < MaxDaysPerWeek; day++ {
 		hoursThisDay := remaining
-		if hoursThisDay > hoursPerPtoDay {
-			hoursThisDay = hoursPerPtoDay
+		if hoursThisDay > HoursPerDay {
+			hoursThisDay = HoursPerDay
 		}
 		logDate := startDay.AddDate(0, 0, day)
 		fmt.Printf("Logging %d hours PTO for %s\n", hoursThisDay, logDate.Format(time.DateOnly))
@@ -225,6 +225,69 @@ func SendPtoWorklog(hours int, startDay time.Time, bearerToken, accountID, issue
 			return fmt.Errorf("failed to send PTO for %s: %w", logDate.Format(time.DateOnly), err)
 		}
 		remaining -= hoursThisDay
+	}
+	return nil
+}
+
+// AllocateHours returns how many hours to log on each of MaxDaysPerWeek days,
+// given a budget and per-day capacity limits. Days are filled serially up to
+// their capacity. Any hours that exceed the total capacity are spread across
+// days that had non-zero capacity (days not fully covered by PTO).
+func AllocateHours(hours int, dayCapacities [MaxDaysPerWeek]int) [MaxDaysPerWeek]int {
+	var alloc [MaxDaysPerWeek]int
+	if hours <= 0 {
+		return alloc
+	}
+	remaining := hours
+
+	// Serial fill: top each day up to its capacity before moving on.
+	for i := 0; i < MaxDaysPerWeek && remaining > 0; i++ {
+		if dayCapacities[i] <= 0 {
+			continue
+		}
+		give := remaining
+		if give > dayCapacities[i] {
+			give = dayCapacities[i]
+		}
+		alloc[i] = give
+		remaining -= give
+	}
+
+	// Excess beyond capacity: spread across days that had any capacity.
+	if remaining > 0 {
+		n := 0
+		for _, c := range dayCapacities {
+			if c > 0 {
+				n++
+			}
+		}
+		for i := 0; i < MaxDaysPerWeek && remaining > 0 && n > 0; i++ {
+			if dayCapacities[i] <= 0 {
+				continue
+			}
+			extra := (remaining + n - 1) / n
+			alloc[i] += extra
+			remaining -= extra
+			n--
+		}
+	}
+
+	return alloc
+}
+
+// SendWorklogAllocation sends pre-computed per-day hour allocations to the
+// Tempo API. Days with zero hours are skipped.
+func SendWorklogAllocation(workType WorkType, allocation [MaxDaysPerWeek]int, startDay time.Time, bearerToken, accountID, issueID string) error {
+	for i, h := range allocation {
+		if h <= 0 {
+			continue
+		}
+		logDate := startDay.AddDate(0, 0, i)
+		fmt.Printf("Logging %d hours for %s\n", h, logDate.Format(time.DateOnly))
+		reqBody := createWorklogRequest(workType, h, logDate, accountID, issueID)
+		if err := sendWorklogEntry(reqBody, bearerToken); err != nil {
+			return fmt.Errorf("failed to send worklog for %s: %w", logDate.Format(time.DateOnly), err)
+		}
 	}
 	return nil
 }

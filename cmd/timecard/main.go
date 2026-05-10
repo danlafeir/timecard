@@ -71,13 +71,32 @@ func AddEntryCmd() *cobra.Command {
 					total, minWeeklyHours, capitalizableTime, ptoTime, otherTime)
 			}
 
-			if err := api.SendWorklog(api.CapitalizableWorkType, capitalizableTime, startOfWeek, bearerToken, accountId, issueId); err != nil {
-				return err
+			// Compute PTO day allocation to determine remaining capacity per day.
+			var fullWeek [api.MaxDaysPerWeek]int
+			for i := range fullWeek {
+				fullWeek[i] = api.HoursPerDay
 			}
+			ptoDayAlloc := api.AllocateHours(ptoTime, fullWeek)
+
+			remainingCap := fullWeek
+			for i, h := range ptoDayAlloc {
+				remainingCap[i] -= h
+			}
+
+			capAlloc := api.AllocateHours(capitalizableTime, remainingCap)
+			for i, h := range capAlloc {
+				remainingCap[i] -= h
+			}
+
+			otherAlloc := api.AllocateHours(otherTime, remainingCap)
+
 			if err := api.SendPtoWorklog(ptoTime, startOfWeek, bearerToken, accountId, issueId); err != nil {
 				return err
 			}
-			if err := api.SendWorklog(api.OtherWorkType, otherTime, startOfWeek, bearerToken, accountId, issueId); err != nil {
+			if err := api.SendWorklogAllocation(api.CapitalizableWorkType, capAlloc, startOfWeek, bearerToken, accountId, issueId); err != nil {
+				return err
+			}
+			if err := api.SendWorklogAllocation(api.OtherWorkType, otherAlloc, startOfWeek, bearerToken, accountId, issueId); err != nil {
 				return err
 			}
 

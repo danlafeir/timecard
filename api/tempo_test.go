@@ -237,6 +237,70 @@ func TestHandleAPIError(t *testing.T) {
 	}
 }
 
+func TestAllocateHours(t *testing.T) {
+	full := [MaxDaysPerWeek]int{8, 8, 8, 8, 8}
+
+	cases := []struct {
+		name      string
+		hours     int
+		caps      [MaxDaysPerWeek]int
+		want      [MaxDaysPerWeek]int
+	}{
+		{
+			name:  "zero hours",
+			hours: 0,
+			caps:  full,
+			want:  [MaxDaysPerWeek]int{},
+		},
+		{
+			name:  "8 hours fills one day",
+			hours: 8,
+			caps:  full,
+			want:  [MaxDaysPerWeek]int{8, 0, 0, 0, 0},
+		},
+		{
+			name:  "40 hours fills all five days",
+			hours: 40,
+			caps:  full,
+			want:  [MaxDaysPerWeek]int{8, 8, 8, 8, 8},
+		},
+		{
+			name:  "20 hours across 5 full-cap days fills 2.5 days serially",
+			hours: 20,
+			caps:  full,
+			want:  [MaxDaysPerWeek]int{8, 8, 4, 0, 0},
+		},
+		{
+			name:  "PTO day 0 is skipped, remaining fills days 1-4",
+			hours: 16,
+			caps:  [MaxDaysPerWeek]int{0, 8, 8, 8, 8},
+			want:  [MaxDaysPerWeek]int{0, 8, 8, 0, 0},
+		},
+		{
+			name:  "partial PTO day gets filled to capacity first",
+			hours: 20,
+			caps:  [MaxDaysPerWeek]int{0, 0, 4, 8, 8},
+			want:  [MaxDaysPerWeek]int{0, 0, 4, 8, 8},
+		},
+		{
+			name:  "excess beyond capacity spreads across non-PTO days",
+			hours: 25,
+			caps:  [MaxDaysPerWeek]int{0, 0, 4, 8, 8},
+			// total cap = 20, excess = 5 spread across 3 eligible days: 2+2+1
+			want:  [MaxDaysPerWeek]int{0, 0, 4 + 2, 8 + 2, 8 + 1},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := AllocateHours(tc.hours, tc.caps)
+			if got != tc.want {
+				t.Errorf("AllocateHours(%d, %v) = %v, want %v", tc.hours, tc.caps, got, tc.want)
+			}
+		})
+	}
+}
+
 func TestSendPtoWorklog(t *testing.T) {
 	monday := time.Date(2024, 1, 8, 0, 0, 0, 0, time.UTC) // a known Monday
 
@@ -288,8 +352,8 @@ func TestSendPtoWorklog(t *testing.T) {
 			if received[i].StartDate != want {
 				t.Errorf("request %d: StartDate = %q, want %q", i, received[i].StartDate, want)
 			}
-			if received[i].TimeSpentSeconds != hoursPerPtoDay*secondsPerHour {
-				t.Errorf("request %d: TimeSpentSeconds = %d, want %d", i, received[i].TimeSpentSeconds, hoursPerPtoDay*secondsPerHour)
+			if received[i].TimeSpentSeconds != HoursPerDay*secondsPerHour {
+				t.Errorf("request %d: TimeSpentSeconds = %d, want %d", i, received[i].TimeSpentSeconds, HoursPerDay*secondsPerHour)
 			}
 		}
 	})
@@ -341,8 +405,8 @@ func TestSendPtoWorklog(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if calls != maxDaysPerWeek {
-			t.Errorf("expected %d requests, got %d", maxDaysPerWeek, calls)
+		if calls != MaxDaysPerWeek {
+			t.Errorf("expected %d requests, got %d", MaxDaysPerWeek, calls)
 		}
 	})
 
@@ -362,8 +426,8 @@ func TestSendPtoWorklog(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if calls != maxDaysPerWeek {
-			t.Errorf("expected %d requests (cap), got %d", maxDaysPerWeek, calls)
+		if calls != MaxDaysPerWeek {
+			t.Errorf("expected %d requests (cap), got %d", MaxDaysPerWeek, calls)
 		}
 	})
 
