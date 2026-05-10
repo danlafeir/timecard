@@ -72,9 +72,10 @@ func requestDayOfWeek() time.Time {
 		log.Fatal(err)
 	}
 
-	fmt.Printf("Now we are filling out a timesheet for %s\n", mondayOfThisWeek.AddDate(0, 0, -7*stringToInt(timeInput)).Format(time.DateOnly))
+	weeksBack := stringToInt(timeInput)
+	fmt.Printf("Now we are filling out a timesheet for %s\n", mondayOfThisWeek.AddDate(0, 0, -7*weeksBack).Format(time.DateOnly))
 
-	return mondayOfThisWeek.AddDate(0, 0, -7*stringToInt(timeInput))
+	return mondayOfThisWeek.AddDate(0, 0, -7*weeksBack)
 }
 
 func determineWeekforTimeSheet() time.Time {

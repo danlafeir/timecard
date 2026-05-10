@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"math"
 	"net/http"
 	"net/url"
 	"strings"
@@ -77,21 +76,6 @@ var (
 		Value: "12E",
 	}
 )
-
-// calculateHoursPerDay distributes total hours across up to 5 work days.
-// For hours < 5, it logs 1 hour per day.
-// For hours >= 5, it distributes hours across 5 days using the original formula:
-// hours/5 + (hours%5 + 5 - dayNumber)/5
-func calculateHoursPerDay(totalHours, dayNumber int) int {
-	if totalHours < MaxDaysPerWeek {
-		return 1
-	}
-	baseHours := totalHours / MaxDaysPerWeek
-	remainder := int(math.Mod(float64(totalHours), float64(MaxDaysPerWeek)))
-	// Distribute remainder hours across days, with earlier days getting more
-	bonusHours := (remainder + MaxDaysPerWeek - dayNumber) / MaxDaysPerWeek
-	return baseHours + bonusHours
-}
 
 // createWorklogRequest builds a worklog request for a specific day.
 func createWorklogRequest(workType WorkType, hours int, date time.Time, accountID, issueID string) *WorklogRequest {
@@ -175,33 +159,6 @@ func handleAPIError(resp *http.Response, reqBody *WorklogRequest) error {
 	// Handle 500-level and other errors
 	log.Printf("❌ Server Error (HTTP %d): %s\n", resp.StatusCode, string(bodyBytes))
 	return fmt.Errorf("server error (HTTP %d): %s", resp.StatusCode, string(bodyBytes))
-}
-
-// SendWorklog distributes hours across work days and sends worklog entries to Tempo.
-// It splits the total hours across up to 5 days (Monday-Friday) of the week starting from the given day.
-func SendWorklog(workType WorkType, hours int, startDay time.Time, bearerToken, accountID, issueID string) error {
-	if hours <= 0 {
-		return nil // No work to log
-	}
-
-	daysToLog := hours
-	if daysToLog > MaxDaysPerWeek {
-		daysToLog = MaxDaysPerWeek
-	}
-
-	for day := 1; day <= daysToLog; day++ {
-		hoursForDay := calculateHoursPerDay(hours, day)
-		logDate := startDay.AddDate(0, 0, day-1)
-
-		fmt.Printf("Logging %d hours for %s\n", hoursForDay, logDate.Format(time.DateOnly))
-
-		reqBody := createWorklogRequest(workType, hoursForDay, logDate, accountID, issueID)
-		if err := sendWorklogEntry(reqBody, bearerToken); err != nil {
-			return fmt.Errorf("failed to send worklog for %s: %w", logDate.Format(time.DateOnly), err)
-		}
-	}
-
-	return nil
 }
 
 // SendPtoWorklog allocates PTO hours serially across consecutive weekdays

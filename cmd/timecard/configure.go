@@ -149,21 +149,32 @@ func initConfig() {
 
 func fetchConfig() (accountId string, issueId string) {
 	initConfig()
-	err := viper.ReadInConfig()
-	if err != nil {
+	if err := viper.ReadInConfig(); err != nil {
 		panic(fmt.Errorf("fatal error config file: %w", err))
 	}
 
+	needsSave := false
+
 	if !viper.IsSet(ACCOUNT_ID_CONFIG) {
 		configureAccountId("")
+		accountId = viper.GetString(ACCOUNT_ID_CONFIG)
+		needsSave = true
 	} else {
 		accountId = viper.GetString(ACCOUNT_ID_CONFIG)
 	}
 
 	if !viper.IsSet(ISSUE_ID_CONFIG) {
 		configureIssueId(accountId)
+		issueId = viper.GetString(ISSUE_ID_CONFIG)
+		needsSave = true
 	} else {
 		issueId = viper.GetString(ISSUE_ID_CONFIG)
+	}
+
+	if needsSave {
+		if err := viper.WriteConfig(); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to persist config: %v\n", err)
+		}
 	}
 
 	return

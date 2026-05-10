@@ -65,6 +65,11 @@ func AddEntryCmd() *cobra.Command {
 				}
 			}
 
+			maxPtoHours := api.MaxDaysPerWeek * api.HoursPerDay
+			if ptoTime > maxPtoHours {
+				return fmt.Errorf("PTO hours (%d) cannot exceed %d (5 days × 8 hours)", ptoTime, maxPtoHours)
+			}
+
 			total := capitalizableTime + ptoTime + otherTime
 			if total < minWeeklyHours {
 				return fmt.Errorf("total hours (%d) must be at least %d (capitalizable: %d, PTO: %d, other: %d)",
@@ -89,6 +94,17 @@ func AddEntryCmd() *cobra.Command {
 			}
 
 			otherAlloc := api.AllocateHours(otherTime, remainingCap)
+
+			capSum, otherSum := 0, 0
+			for _, h := range capAlloc {
+				capSum += h
+			}
+			for _, h := range otherAlloc {
+				otherSum += h
+			}
+			if capSum < capitalizableTime || otherSum < otherTime {
+				return fmt.Errorf("PTO (%dh) leaves no capacity for capitalizable (%dh) and other (%dh) time — reduce PTO or adjust hours", ptoTime, capitalizableTime, otherTime)
+			}
 
 			if err := api.SendPtoWorklog(ptoTime, startOfWeek, bearerToken, accountId, issueId); err != nil {
 				return err
