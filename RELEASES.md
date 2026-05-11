@@ -14,6 +14,15 @@ timecard update
 
 ---
 
+## v1.0.1 — 2026-05-11
+
+**Fix deployment script and actually adding the release**
+
+Fixed the deploy.sh script to create a release
+
+---
+
+
 ## v1.0.0 — 2026-05-10
 
 **Release v1 of timecard**
@@ -21,5 +30,3 @@ timecard update
 This is the initial release using Github Releases and update command targets here and checks for updates
 
 ---
-
-
