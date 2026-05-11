@@ -43,7 +43,7 @@ if [ -z "$DOWNLOAD_URL" ]; then
   echo "No GitHub Release found for ${ASSET_NAME}. Falling back to legacy bin/ path..." >&2
   API_URL="https://api.github.com/repos/${REPO}/contents/bin/"
   FILENAME=$(curl -sSL "$API_URL" 2>/dev/null | \
-    grep -o '"name": *"'"${BINARY}-${OS}-${ARCH}"'-[a-zA-Z0-9]*"' | \
+    grep -o '"name": *"'"${BINARY}-${OS}-${ARCH}"'[^"]*"' | \
     sed 's/.*: *"//;s/"//' | sort | tail -n1)
   if [ -z "$FILENAME" ]; then
     echo "Could not find a binary for ${OS}/${ARCH} via either path." >&2
